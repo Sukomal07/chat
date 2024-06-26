@@ -1,18 +1,33 @@
 "use client"
 
-import { useEffect, useState } from "react";
-import { Button } from "./ui/button";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button"
 import { Card } from "./ui/card";
 import axios from "axios";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableRow,
+} from "@/components/ui/table"
+import Modal from "./Modal";
+import { Loader2 } from "lucide-react";
+
 
 interface Item {
     [key: string]: string | number;
 }
 
-export default function Record() {
+interface RecordProps {
+    refresh: boolean;
+    setRefresh: Dispatch<SetStateAction<boolean>>;
+}
+
+export default function Record({ refresh, setRefresh }: RecordProps) {
     const [items, setItems] = useState<Item[]>([]);
-    const [editItemId, setEditItemId] = useState<string | null>(null); // Track which item is being edited
-    const [refresh, setRefresh] = useState(false);
+    const [editItemId, setEditItemId] = useState<string | null>(null);
+    const [viewItem, setViewItem] = useState<Item | null>(null);
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -26,19 +41,19 @@ export default function Record() {
         fetchData();
     }, [refresh]);
 
-    const handleView = (id: string) => {
-        console.log("View", id);
+    const handleView = (item: Item) => {
+        setViewItem(item);
     };
 
     const handleEdit = (id: string) => {
-        console.log("Edit", id);
-        setEditItemId(id); // Set the item ID to be edited
+        setEditItemId(id);
     };
 
     const handleDelete = async (id: string) => {
         try {
             setRefresh(true);
-            await axios.delete(`https://pybarker-fastapi.onrender.com/items/${id}`);
+            const response = await axios.delete(`https://pybarker-fastapi.onrender.com/items/${id}`);
+            alert(response.data?.message);
             setRefresh(false);
         } catch (error) {
             console.error(`Error deleting item with id ${id}:`, error);
@@ -47,11 +62,14 @@ export default function Record() {
 
     const handleSaveEdit = async (editedItem: Item) => {
         try {
+            setSaving(true)
             const response = await axios.post(`https://pybarker-fastapi.onrender.com/items/${editedItem.id}`, editedItem);
             alert(response.data?.message);
             setEditItemId(null);
             setRefresh(true);
+            setSaving(false)
         } catch (error) {
+            setSaving(false)
             console.error("Error saving edited item:", error);
         }
     };
@@ -60,80 +78,65 @@ export default function Record() {
         setEditItemId(null);
     };
 
+    const closeModal = () => {
+        setViewItem(null);
+    };
+
     return (
         <Card title="Record" description="View, edit, or delete existing records.">
-            <div className="overflow-auto">
-                {items.map((item) => {
-                    const { id, ...displayItem } = item;
-                    const isEditing = id === editItemId;
+            <Table>
+                <TableBody>
+                    {items.map((item) => {
+                        const { id, firstName, lastName, phoneNumber, email } = item;
+                        const isEditing = id === editItemId;
 
-                    return (
-                        <table key={id as string}>
-                            <thead>
-                                <tr>
-                                    {Object.keys(displayItem).map((key) => (
-                                        <th key={key} className="p-2 border-b border-gray-200">
-                                            {key}
-                                        </th>
-                                    ))}
-                                    <th className="p-2 border-b border-gray-200">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    {Object.values(displayItem).map((value, index) => (
-                                        <td key={index} className="p-2 border-b border-gray-200">
-                                            {isEditing ? (
-                                                <input
-                                                    type="text"
-                                                    value={value as string}
-                                                    className="bg-gray-50 border border-gray-300 text-gray-900 rounded-md  p-2 focus:border-blue-500 outline-none w-full"
-                                                    onChange={(e) => {
-                                                        const newValue = e.target.value;
-                                                        setItems((prevItems) => {
-                                                            const updatedItems = [...prevItems];
-                                                            updatedItems.find((item) => item.id === id)![Object.keys(displayItem)[index]] = newValue;
-                                                            return updatedItems;
-                                                        });
-                                                    }}
-                                                />
-                                            ) : (
-                                                value
-                                            )}
-                                        </td>
-                                    ))}
-                                    <td className="p-2 border-b border-gray-200">
-                                        <div className="flex items-center gap-2 h-full">
-                                            {isEditing ? (
-                                                <>
-                                                    <Button onClick={() => handleSaveEdit(item)} btnType="submit" className="bg-black hover:bg-gray-600 text-white text-xl py-2 px-3 rounded-md w-fit">
-                                                        Save
-                                                    </Button>
-                                                    <Button onClick={handleCancelEdit} btnType="button" className="text-black border border-black text-xl py-2 px-3 rounded-md w-fit">
-                                                        Cancel
-                                                    </Button>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Button onClick={() => handleView(id as string)} btnType="button">
-                                                        <EyeIcon />
-                                                    </Button>
-                                                    <Button onClick={() => handleEdit(id as string)} btnType="button">
-                                                        <FilePenIcon />
-                                                    </Button>
-                                                    <Button onClick={() => handleDelete(id as string)} btnType="button">
-                                                        <TrashIcon />
-                                                    </Button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    );
-                })}
-            </div>
+                        return (
+                            <TableRow key={id}>
+                                <TableCell>{firstName}</TableCell>
+                                <TableCell>{lastName}</TableCell>
+                                <TableCell>{phoneNumber}</TableCell>
+                                <TableCell>{email}</TableCell>
+                                <TableCell>
+                                    <div className="flex items-center gap-2">
+                                        {isEditing ? (
+                                            <>
+                                                <Button onClick={() => handleSaveEdit(item)} variant="default" disabled={saving}>
+                                                    {saving ? (
+                                                        <>
+                                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                            Please wait
+                                                        </>
+                                                    ) : (
+                                                        "Save"
+                                                    )}
+                                                </Button>
+                                                <Button onClick={handleCancelEdit} variant="outline" disabled={saving}>
+                                                    Cancel
+                                                </Button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div onClick={() => handleView(item)} className="cursor-pointer">
+                                                    <EyeIcon />
+                                                </div>
+                                                <div onClick={() => handleEdit(id as string)} className="cursor-pointer">
+                                                    <FilePenIcon />
+                                                </div>
+                                                <div onClick={() => handleDelete(id as string)} className="cursor-pointer">
+                                                    <TrashIcon />
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </TableCell>
+                            </TableRow>
+                        );
+                    })}
+                </TableBody>
+            </Table>
+            {viewItem && (
+                <Modal item={viewItem} onClose={closeModal} />
+            )}
         </Card>
     );
 }
@@ -145,8 +148,8 @@ function EyeIcon() {
     return (
         <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
+            width="20"
+            height="20"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -165,8 +168,8 @@ function FilePenIcon() {
     return (
         <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
+            width="20"
+            height="20"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -186,8 +189,8 @@ function TrashIcon() {
     return (
         <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
+            width="20"
+            height="20"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"

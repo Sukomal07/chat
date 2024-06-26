@@ -2,12 +2,14 @@
 
 interface TextInputProps {
     label: string;
+    name: string;
     value: string;
-    onChange: (value: string) => void;
-    onDelete: () => void;
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onDelete?: () => void;
+    delIcon?: boolean
 }
 
-export const TextInput = ({ label, value, onChange, onDelete }: TextInputProps) => {
+export const TextInput = ({ label, name, value, onChange, onDelete, delIcon }: TextInputProps) => {
     return (
         <div className="flex flex-col gap-2 w-full">
             <label htmlFor={label} className="capitalize text-base text-black font-semibold">{label}</label>
@@ -15,19 +17,23 @@ export const TextInput = ({ label, value, onChange, onDelete }: TextInputProps) 
                 <input
                     type="text"
                     id={label}
-                    name={label}
+                    name={name}
                     placeholder={`Enter ${label}`}
                     value={value}
-                    onChange={(e) => onChange(e.target.value)}
+                    onChange={onChange}
                     className="bg-gray-50 border border-gray-300 text-gray-900 rounded-md  p-2 focus:border-blue-500 outline-none w-full"
                 />
-                <button
-                    type="button"
-                    onClick={onDelete}
-                    className="text-red-500 hover:text-red-700"
-                >
-                    <TrashIcon />
-                </button>
+                {
+                    delIcon && (
+                        <button
+                            type="button"
+                            onClick={onDelete}
+                            className="text-red-500 hover:text-red-700"
+                        >
+                            <TrashIcon />
+                        </button>
+                    )
+                }
             </div>
         </div>
     );
