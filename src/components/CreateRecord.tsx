@@ -3,8 +3,8 @@
 import { Card } from "./ui/card"
 import { TextInput } from "./ui/textInput"
 import { Button } from "./ui/button"
-import { Model } from "./Model"
 import { useState } from "react";
+import axios from "axios";
 
 interface Input {
     label: string;
@@ -30,21 +30,29 @@ export default function CreateRecord() {
         setInputs(newInputs);
     };
 
-    const handleSave = () => {
-        const clearedInputs = inputs.map(input => ({
-            ...input,
-            value: ""
-        }));
+    const handleSave = async () => {
+        try {
+            const transformedData: { [key: string]: string } = inputs.reduce((acc, input) => {
+                acc[input.label] = input.value;
+                return acc;
+            }, {} as { [key: string]: string });
 
-        setInputs(clearedInputs);
-        console.log("Form saved", inputs);
+            const response = await axios.post("https://pybarker-fastapi.onrender.com/items", transformedData);
+            const clearedInputs = inputs.map(input => ({
+                ...input,
+                value: ""
+            }));
+            setInputs(clearedInputs);
+            alert(response.data?.message);
+        } catch (error) {
+            console.error("Error saving data", error);
+        }
     };
 
-    console.log(inputs)
     return (
         <Card title="Create New Record" description="Fill out the form add a new record">
-            <div className="flex justify-end">
-                <Button onClick={handleAddInput} btnType="button" className="bg-black hover:bg-gray-600 text-white text-xl py-2 px-3 rounded-md w-fit">
+            <div className="flex justify-end absolute top-6 right-6">
+                <Button onClick={handleAddInput} btnType="button" className="bg-black hover:bg-gray-600 text-white text-xl py-2 px-5 rounded-md w-fit">
                     +
                 </Button>
             </div>
@@ -62,9 +70,13 @@ export default function CreateRecord() {
                 </form>
             </div>
             <div className="mt-5 flex justify-end">
-                <Button onClick={handleSave} btnType="submit" className={`text-white text-base py-2 px-4 rounded-md ${inputs.length === 0 ? 'bg-gray-500 cursor-not-allowed' : 'bg-black hover:bg-gray-600'}`} disabled={inputs.length === 0}>
-                    Save
-                </Button>
+                {
+                    inputs.length !== 0 && (
+                        <Button onClick={handleSave} btnType="submit" className="text-white text-base py-2 px-4 rounded-md bg-black hover:bg-gray-700" disabled={inputs.length === 0}>
+                            Save
+                        </Button>
+                    )
+                }
             </div>
         </Card>
     )
