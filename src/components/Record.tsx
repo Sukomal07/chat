@@ -56,7 +56,7 @@ export default function Record({ refresh, setRefresh }: RecordProps) {
             alert(response.data?.message);
             setRefresh(false);
         } catch (error) {
-            console.error(`Error deleting item with id ${id}:`, error);
+            console.error(`Error deleting item with id ${id}:, error`);
         }
     };
 
@@ -87,17 +87,34 @@ export default function Record({ refresh, setRefresh }: RecordProps) {
             <Table>
                 <TableBody>
                     {items.map((item) => {
-                        const { id, firstName, lastName, phoneNumber, email } = item;
+                        const { id, ...displayItem } = item;
                         const isEditing = id === editItemId;
 
                         return (
-                            <TableRow key={id}>
-                                <TableCell>{firstName}</TableCell>
-                                <TableCell>{lastName}</TableCell>
-                                <TableCell>{phoneNumber}</TableCell>
-                                <TableCell>{email}</TableCell>
+                            <TableRow key={id as string} className="flex items-center justify-between">
+                                {Object.values(displayItem).map((value, index) => (
+                                    <TableCell key={index}>
+                                        {isEditing ? (
+                                            <input
+                                                type="text"
+                                                value={value as string}
+                                                className="bg-gray-50 border border-gray-300 text-gray-900 rounded-md p-2 focus:border-blue-500 outline-none w-full"
+                                                onChange={(e) => {
+                                                    const newValue = e.target.value;
+                                                    setItems((prevItems) => {
+                                                        const updatedItems = [...prevItems];
+                                                        updatedItems.find((item) => item.id === id)![Object.keys(displayItem)[index]] = newValue;
+                                                        return updatedItems;
+                                                    });
+                                                }}
+                                            />
+                                        ) : (
+                                            value
+                                        )}
+                                    </TableCell>
+                                ))}
                                 <TableCell>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 h-full">
                                         {isEditing ? (
                                             <>
                                                 <Button onClick={() => handleSaveEdit(item)} variant="default" disabled={saving}>
