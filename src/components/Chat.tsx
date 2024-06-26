@@ -1,20 +1,77 @@
 "use client"
 
+import { ChatCompletionMessageParam } from "ai/prompts";
+import axios from "axios";
+import { useState } from "react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
-import { useState } from "react";
+
+const generateResponse = async ({
+    chatHistory,
+    userQuery,
+    fields,
+    updateChatHistory,
+    setLoading
+}: {
+    chatHistory: Array<ChatCompletionMessageParam>;
+    updateChatHistory: (aiResponse: string) => void;
+    userQuery: string;
+    fields: Array<string>;
+    setLoading: (loading: boolean) => void;
+}) => {
+    try {
+        const airesponse = await axios.post("/api/chat/openai", {
+            chatHistory,
+            userQuery,
+            fields,
+        });
+        updateChatHistory(airesponse.data.content);
+        setLoading(false)
+    } catch (err: any) {
+        const message = err?.message ?? "Something Went Wrong!!";
+        setLoading(false)
+        console.error(err);
+        alert(message);
+    }
+};
+
+const fields = ["firstName", "lastName", "phoneNumber", "email"];
+
 
 export default function Chat() {
-    const [messages, setMessages] = useState([
-        { sender: "You", text: "Hello" },
-        { sender: "Assistant", text: "Hello! How can I assist you today? I'm happy to help with any questions or tasks you may have." }
-    ]);
+    const [chatHistory, setChatHistory] = useState<
+        Array<ChatCompletionMessageParam>
+    >(() => []);
     const [newMessage, setNewMessage] = useState("");
+    const [loading, setLoading] = useState(false);
 
     const handleSendMessage = () => {
         if (newMessage.trim() !== "") {
-            setMessages([...messages, { sender: "You", text: newMessage }]);
+            const userMessage: ChatCompletionMessageParam = {
+                role: "user",
+                name: "User",
+                content: newMessage,
+            };
+            setChatHistory((prev) => [...prev, userMessage]);
             setNewMessage("");
+            setLoading(true);
+            generateResponse({
+                chatHistory: chatHistory,
+                userQuery: newMessage,
+                updateChatHistory: (aiResponse) =>
+                    setChatHistory((prev) => [
+                        ...prev,
+                        { role: "system", content: aiResponse, name: "AI" },
+                    ]),
+                fields,
+                setLoading
+            });
+        }
+    };
+
+    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter") {
+            handleSendMessage();
         }
     };
 
@@ -22,26 +79,33 @@ export default function Chat() {
         <Card title="Chat" description="Interact with the assistant">
             <div className="flex flex-col gap-4 h-full relative">
                 <div className="h-[90%] overflow-y-auto flex flex-col gap-3">
-                    {messages.map((message, index) => (
-                        <div key={index} className="flex items-start gap-4">
-                            <div className="grid gap-1">
-                                <div className="font-bold">{message.sender}</div>
-                                <div className="prose text-muted-foreground">
-                                    <p>{message.text}</p>
-                                </div>
+                    {chatHistory.map((message, index) => (
+
+                        <div className="grid gap-1" key={index}>
+                            <h1 className="font-bold">{message.role === "system" ? "AI" : "User"}</h1>
+                            <div className="prose text-muted-foreground">
+                                <p>{(message?.content as string) ?? "NA"}</p>
                             </div>
                         </div>
+
                     ))}
+                    {loading && (
+                        <div className="flex justify-start">
+                            <p className="text-gray-500">Generating...</p>
+                        </div>
+                    )}
                 </div>
                 <div className="flex items-center gap-2 mt-4 absolute bottom-2 w-full">
                     <input
                         type="text"
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyDown={handleKeyPress}
                         className="flex-grow p-2 border rounded-md"
                         placeholder="Type your message..."
+                        disabled={loading}
                     />
-                    <Button onClick={handleSendMessage} className="bg-black hover:bg-gray-600 text-white p-2 rounded-md">
+                    <Button onClick={handleSendMessage} className="bg-black hover:bg-gray-600 text-white p-2 rounded-md" disabled={loading}>
                         <ArrowUpIcon />
                     </Button>
                 </div>
