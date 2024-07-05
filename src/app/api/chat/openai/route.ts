@@ -38,30 +38,37 @@ export async function POST(request: Request) {
             apiKey: profile.openai_api_key,
         });
         const emebeddingResponse = await axios.post(
-            "https://pybarker-fastapi.onrender.com/search",
+            "http://localhost:8080/search",
             {
                 query: userQuery,
-                fields: fields,
+                fields: fields
             }
         );
-        const userMessage = { role: "user", content: userQuery };
-        const emebeddingsResult = emebeddingResponse.data?.["results"];
+        const emebeddingsResult = emebeddingResponse.data?.["results"] || [];
+        console.log(emebeddingsResult)
         const systemMessages =
             emebeddingsResult.length > 0
-                ? (emebeddingResponse.data?.["results"] ?? []).map((e: any) => ({
+                ? emebeddingsResult.map((e: any) => ({
                     role: "system",
-                    content: JSON.stringify(e.document),
+                    content: JSON.stringify(e.document) || '',
                 }))
-                : [{ role: "system", content: JSON.stringify([]) }];
+                : [{ role: "system", content: JSON.stringify([]) || '' }];
+
+        const userMessage = { role: "user", content: userQuery || '' };
+
         const messages: Array<ChatCompletionMessageParam> = [
             {
                 role: "system",
                 content: SYSTEM_PROMPT,
             },
-            ...chatHistory,
+            ...chatHistory.map((msg: any) => ({
+                role: msg.role || 'user',
+                content: msg.content || '',
+            })),
             userMessage,
             ...systemMessages,
         ];
+
 
         const result = await openai.chat.completions.create({
             messages: messages,

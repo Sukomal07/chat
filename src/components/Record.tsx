@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table"
 import Modal from "./Modal";
 import { Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 
 interface Item {
@@ -32,7 +33,7 @@ export default function Record({ refresh, setRefresh }: RecordProps) {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await axios.get("https://pybarker-fastapi.onrender.com/items");
+                const response = await axios.get("http://localhost:8080/items");
                 setItems(response.data);
             } catch (error) {
                 console.log(error);
@@ -50,12 +51,14 @@ export default function Record({ refresh, setRefresh }: RecordProps) {
     };
 
     const handleDelete = async (id: string) => {
+        const loadingToastId = toast.loading("Deleting...");
         try {
             setRefresh(true);
-            const response = await axios.delete(`https://pybarker-fastapi.onrender.com/items/${id}`);
-            alert(response.data?.message);
+            const response = await axios.delete(`http://localhost:8080/items/${id}`);
+            toast.success(response.data?.message || "Item deleted successfully", { id: loadingToastId });
             setRefresh(false);
         } catch (error) {
+            toast.error(`Error deleting item with id ${id}`, { id: loadingToastId });
             console.error(`Error deleting item with id ${id}:, error`);
         }
     };
@@ -63,7 +66,7 @@ export default function Record({ refresh, setRefresh }: RecordProps) {
     const handleSaveEdit = async (editedItem: Item) => {
         try {
             setSaving(true)
-            const response = await axios.post(`https://pybarker-fastapi.onrender.com/items/${editedItem.id}`, editedItem);
+            const response = await axios.post(`http://localhost:8080/items/${editedItem.id}`, editedItem);
             alert(response.data?.message);
             setEditItemId(null);
             setRefresh(true);
@@ -91,7 +94,7 @@ export default function Record({ refresh, setRefresh }: RecordProps) {
                         const isEditing = id === editItemId;
 
                         return (
-                            <TableRow key={id as string} className="flex items-center justify-between">
+                            <TableRow key={id as string}>
                                 {Object.values(displayItem).map((value, index) => (
                                     <TableCell key={index}>
                                         {isEditing ? (
